@@ -13,17 +13,26 @@ import com.github.badoualy.telegram.tl.api.messages.TLAbsMessages
 import com.github.badoualy.telegram.tl.core.TLVector
 import com.github.badoualy.telegram.tl.exception.RpcErrorException
 import com.google.gson.Gson
+import com.mongodb.ConnectionString
+import com.mongodb.client.model.InsertOneOptions
+import com.mongodb.client.model.UpdateOptions
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
+import org.litote.kmongo.coroutine.coroutine
+import org.litote.kmongo.coroutine.updateOne
+import org.litote.kmongo.reactivestreams.KMongo
+import server.TelegramNews
 import server.telegram.model.TelegramApiInfo
 import java.awt.Image
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.imageio.ImageIO
 import javax.swing.ImageIcon
 import kotlin.time.ExperimentalTime
@@ -54,7 +63,9 @@ val PHONE_NUMBER = apiInfo.phoneNumber
 val application = TelegramApp(API_ID, API_HASH, MODEL, SYSTEM_VERSION, APP_VERSION, LANG_CODE)
 
 @OptIn(ExperimentalTime::class)
-fun fetchBetesebAcademyChannelMessages(size: Int): List<String>? {
+fun fetchBetesebAcademyChannelMessagesFromAPI(size: Int): List<TelegramNews?>? {
+
+
 
     
     val client = getDefaultClient(application, ApiStorage())
@@ -72,13 +83,15 @@ fun fetchBetesebAcademyChannelMessages(size: Int): List<String>? {
 
 
         }
-        println(c.messages.map {( it as TLMessage).message})
+        val sdf = SimpleDateFormat("YYYY-MM-DD HH:MM:SS")
+
+        println(c.messages.map { Date(( it as TLMessage).date.toLong() * 1000) })
         return c.messages?.filterIsInstance<TLMessage>()
             ?.map {
                 when {
-                    it.message != null -> it.message
+                    it.message != null -> TelegramNews(message = it.message, date = it.date, attachment = "")
 
-                    else -> "Null"
+                    else -> null
                 }
             }
 
@@ -100,14 +113,33 @@ fun fetchBetesebAcademyChannelMessages(size: Int): List<String>? {
 
 
  fun main(){
-    fetchBetesebAcademyChannelMessages(10)
+    //fetchBetesebAcademyChannelMessages(10)
 }
 
  
-fun getInputPeer(tlAbsDialogs: TLAbsDialogs): TLAbsInputPeer {
+private fun getInputPeer(tlAbsDialogs: TLAbsDialogs): TLAbsInputPeer {
     val betesebAcademyPeerId = 1227729677
     val peer = tlAbsDialogs.chats.filter { chat: TLAbsChat -> chat.id == betesebAcademyPeerId }[0]
     return if (peer is TLChannel) TLInputPeerChannel(peer.id, peer.accessHash) else TLInputPeerEmpty()
 
+
+}
+
+/**
+ * if [telegramNews] was null would return the data from the database otherwise would update the database
+ * */
+suspend fun fetchBetesebAcademyChannelMessageFromDB(telegramNews: List<TelegramNews>?) = withContext(IO) {
+    val client = KMongo.createClient(ConnectionString("mongodb://localhost:27017")).coroutine
+
+    val db =  client.getDatabase("beteseb_academy")
+
+    val _telegramNews = db.getCollection<TelegramNews>()
+
+    telegramNews?.forEach {
+        _telegramNews.updateOne(it, UpdateOptions().upsert(true))
+
+    }
+    return@withContext _telegramNews.find().toList()
+    // println(News.findOne(Telegram::news::name eq "Jake"))
 
 }

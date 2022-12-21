@@ -9,7 +9,7 @@
 
 plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.5.31"
+    id("org.jetbrains.kotlin.jvm") version "1.7.10"
 
     // Apply the application plugin to add support for building a CLI application in Java.
     application
@@ -18,17 +18,32 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+    maven("https://jitpack.io")
 }
 
 dependencies {
     // Align versions of all Kotlin components
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+    implementation("com.github.badoualy:kotlogram:0.0.6")
 
     // Use the Kotlin JDK 8 standard library.
+    implementation("commons-io:commons-io:2.5")
+    implementation("io.ktor:ktor-server-core:2.2.1")
+    implementation("io.ktor:ktor-server-netty:2.2.1")
+    implementation ("com.google.code.gson:gson:2.10")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    implementation("ch.qos.logback:logback-classic:1.4.5")
+
+
+    //kmongo
+    implementation("org.litote.kmongo:kmongo-coroutine:4.8.0")
 
     // This dependency is used by the application.
     implementation("com.google.guava:guava:30.1.1-jre")
+
+    implementation("io.ktor:ktor-serialization-gson:2.2.1")
+    implementation("io.ktor:ktor-server-content-negotiation:2.2.1")
 }
 
 testing {
